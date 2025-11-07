@@ -22,7 +22,7 @@ pipeline {
 
         stage('Configure AWS Credentials') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws_jenkins']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS-CREDS']]) {
                     echo "✅ AWS Credentials Configured"
                 }
             }
