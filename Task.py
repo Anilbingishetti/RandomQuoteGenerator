@@ -1,15 +1,24 @@
 import requests
 
-def get_random_quote():
+def handler(event, context):
+    """
+    AWS Lambda handler entry-point.
+    """
     url = "https://api.quotable.io/random"
     response = requests.get(url)
-    
+
     if response.status_code == 200:
         data = response.json()
-        print(f'"{data["content"]}" — {data["author"]}')
-    else:
-        print("Failed to retrieve quote. Try again later.")
+        quote = data["content"]
+        author = data["author"]
 
-print("Random Quote Generator (API)")
-print("-----------------------------")
-get_random_quote()
+        # Return a Lambda-compatible response
+        return {
+            "statusCode": 200,
+            "body": f'"{quote}" — {author}'
+        }
+    else:
+        return {
+            "statusCode": 500,
+            "body": "Failed to retrieve quote. Try again later."
+        }

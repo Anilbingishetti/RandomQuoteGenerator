@@ -1,10 +1,12 @@
-FROM python:3.9-slim
+# Use AWS Lambda Python runtime base image
+FROM public.ecr.aws/lambda/python:3.9
 
-WORKDIR /app
-
+# Install dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
-COPY . .
+# Copy app code
+COPY . ${LAMBDA_TASK_ROOT}
 
-CMD ["python", "api_quote_generator.py"]
+# Set handler (filename.function)
+CMD ["Task.handler"]

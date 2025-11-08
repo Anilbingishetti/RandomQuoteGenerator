@@ -46,15 +46,16 @@ pipeline {
 }
 
 
-        stage('Build Docker Image') {
-            steps {
-                bat """
-                    echo 🐳 Building Docker Image...
-                    docker build -t %REPO_NAME% .
-                    docker tag %REPO_NAME%:%IMAGE_TAG% %ECR_URL%:%IMAGE_TAG%
-                """
-            }
+       stage('Build Docker Image') {
+        steps {
+          bat """
+              echo 🐳 Building Docker Image...
+              docker build --platform linux/amd64 -t randomquotegenerator-anil .
+              docker tag randomquotegenerator-anil:latest ${ECR_URL}:${IMAGE_TAG}
+              """
         }
+   }
+
 
         stage('Push Docker Image to AWS ECR') {
             steps {
