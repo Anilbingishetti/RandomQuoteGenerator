@@ -15,21 +15,6 @@ variable "repo_name" {
 }
 
 #########################################
-# ✅ Add your VPC + Subnets
-#########################################
-
-variable "vpc_id" {
-  default = "vpc-0837fc4ce02f6b0e4"
-}
-
-variable "subnet_ids" {
-  type    = list(string)
-  default = [
-    "subnet-0b3abb56365076500"
-  ]
-}
-
-#########################################
 # ✅ Provider
 #########################################
 
@@ -38,7 +23,22 @@ provider "aws" {
 }
 
 #########################################
-# ✅ IAM Role
+# ✅ Automatically Detect Default VPC
+#########################################
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default_subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+#########################################
+# ✅ IAM Role for Lambda Execution
 #########################################
 
 resource "aws_iam_role" "lambda_execution_role" {
@@ -92,13 +92,13 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 }
 
 #########################################
-# ✅ Lambda Security Group
+# ✅ Security Group for Lambda
 #########################################
 
 resource "aws_security_group" "lambda_sg" {
   name        = "lambda_security_group"
-  description = "Security group for Lambda"
-  vpc_id      = var.vpc_id
+  description = "Security group for Lambda function"
+  vpc_id      = data.aws_vpc.default.id
 
   egress {
     from_port   = 0
@@ -109,7 +109,7 @@ resource "aws_security_group" "lambda_sg" {
 }
 
 #########################################
-# ✅ Lambda Function (Docker Image)
+# ✅ Lambda Function Using Docker Image
 #########################################
 
 resource "aws_lambda_function" "random_quote_lambda" {
@@ -118,15 +118,14 @@ resource "aws_lambda_function" "random_quote_lambda" {
 
   image_uri = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:latest"
 
-  # ✅ REQUIRED to match your Docker build (--platform=linux/amd64)
-  architectures = ["x86_64"]
+  architectures = ["x86_64"]   # ✅ Must match Docker build --platform
 
   memory_size = 256
   timeout     = 30
   role        = aws_iam_role.lambda_execution_role.arn
 
   vpc_config {
-    subnet_ids         = var.subnet_ids
+    subnet_ids         = data.aws_subnets.default_subnets.ids
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
 }
