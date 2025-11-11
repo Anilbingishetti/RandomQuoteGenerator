@@ -3,34 +3,34 @@
 #########################################
 
 variable "aws_region" {
-  default = "ap-south-1"   # e.g., us-east-1 or ap-south-1
+  default = "ap-south-1"
 }
 
 variable "aws_account_id" {
-  default = "108792016419"   # e.g., 123456789012
+  default = "108792016419"
 }
 
 variable "repo_name" {
-  default = "randomquotegenerator-anil"   # e.g., random-quote-app
+  default = "randomquotegenerator-anil"
 }
 
 #########################################
-# ✅ Add your VPC + Subnets (required for security group)
+# ✅ Add your VPC + Subnets
 #########################################
 
 variable "vpc_id" {
-  default = "vpc-0837fc4ce02f6b0e4"  # e.g., vpc-0ab12345cd6ef7890
+  default = "vpc-0837fc4ce02f6b0e4"
 }
 
 variable "subnet_ids" {
   type    = list(string)
   default = [
-    "subnet-0b3abb56365076500"  
+    "subnet-0b3abb56365076500"
   ]
 }
 
 #########################################
-# ✅ Provider Configuration
+# ✅ Provider
 #########################################
 
 provider "aws" {
@@ -38,7 +38,7 @@ provider "aws" {
 }
 
 #########################################
-# ✅ IAM Role for Lambda Execution
+# ✅ IAM Role
 #########################################
 
 resource "aws_iam_role" "lambda_execution_role" {
@@ -59,7 +59,7 @@ resource "aws_iam_role" "lambda_execution_role" {
 }
 
 #########################################
-# ✅ IAM Policy for VPC Access 
+# ✅ IAM Policy for VPC Access
 #########################################
 
 resource "aws_iam_role_policy" "lambda_vpc_permissions" {
@@ -82,7 +82,6 @@ resource "aws_iam_role_policy" "lambda_vpc_permissions" {
   })
 }
 
-
 #########################################
 # ✅ Attach Basic Lambda Logging Policy
 #########################################
@@ -93,7 +92,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 }
 
 #########################################
-# ✅ Security Group for Lambda in the VPC
+# ✅ Lambda Security Group
 #########################################
 
 resource "aws_security_group" "lambda_sg" {
@@ -105,27 +104,27 @@ resource "aws_security_group" "lambda_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]   # ✅ Allows Lambda to make API calls or access public internet if NAT is configured
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 #########################################
-# ✅ Lambda Function Using Docker Image From ECR
+# ✅ Lambda Function (Docker Image)
 #########################################
 
 resource "aws_lambda_function" "random_quote_lambda" {
   function_name = "random-quote-lambda"
   package_type  = "Image"
 
-  image_uri     = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:latest"
+  image_uri = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:latest"
 
-  memory_size   = 256
-  timeout       = 30
-  role          = aws_iam_role.lambda_execution_role.arn
+  # ✅ REQUIRED to match your Docker build (--platform=linux/amd64)
+  architectures = ["x86_64"]
 
-  ########################################################
-  # ✅ Assign VPC + Security Group to Lambda
-  ########################################################
+  memory_size = 256
+  timeout     = 30
+  role        = aws_iam_role.lambda_execution_role.arn
+
   vpc_config {
     subnet_ids         = var.subnet_ids
     security_group_ids = [aws_security_group.lambda_sg.id]
@@ -133,7 +132,7 @@ resource "aws_lambda_function" "random_quote_lambda" {
 }
 
 #########################################
-# ✅ Output (Shows Lambda ARN)
+# ✅ Output
 #########################################
 
 output "lambda_function_arn" {

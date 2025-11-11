@@ -14,7 +14,7 @@ pipeline {
 
     stages {
 
-        stage('Checking out Code from GitHub') {
+        stage('Checkout Code from GitHub') {
             steps {
                 checkout scm
             }
@@ -22,40 +22,43 @@ pipeline {
 
         stage('Configure AWS Credentials') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS-CREDS']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                                  credentialsId: 'AWS-CREDS']]) {
                     echo "✅ AWS Credentials Configured"
                 }
             }
         }
 
-       stage('Login to ECR') {
-    steps {
-        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
-                          credentialsId: 'AWS-CREDS']]) {
-            bat """
-            echo 🔐 Logging into AWS ECR...
+        stage('Login to AWS ECR') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                                  credentialsId: 'AWS-CREDS']]) {
+                    bat """
+                        echo 🔐 Logging into AWS ECR...
 
-            aws configure set aws_access_key_id %AWS_ACCESS_KEY_ID%
-            aws configure set aws_secret_access_key %AWS_SECRET_ACCESS_KEY%
-            aws configure set default.region %AWS_REGION%
+                        aws configure set aws_access_key_id %AWS_ACCESS_KEY_ID%
+                        aws configure set aws_secret_access_key %AWS_SECRET_ACCESS_KEY%
+                        aws configure set default.region %AWS_REGION%
 
-            aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_URL%
-            """
+                        aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_URL%
+                    """
+                }
+            }
         }
-    }
-}
 
+        stage('Build Docker Image') {
+            steps {
+                bat """
+                    echo 🐳 Building Docker Image...
+                    
+                    REM ✅ Disable BuildKit to ensure Lambda-compatible image
+                    set DOCKER_BUILDKIT=0
 
-       stage('Build Docker Image') {
-        steps {
-          bat """
-              echo 🐳 Building Docker Image...
-              docker build --platform linux/amd64 -t randomquotegenerator-anil .
-              docker tag randomquotegenerator-anil:latest ${ECR_URL}:${IMAGE_TAG}
-              """
+                    docker build --platform linux/amd64 -t %REPO_NAME% .
+                    docker tag %REPO_NAME%:%IMAGE_TAG% %ECR_URL%:%IMAGE_TAG%
+                """
+            }
         }
-   }
-
 
         stage('Push Docker Image to AWS ECR') {
             steps {
